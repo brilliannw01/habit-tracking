@@ -1,0 +1,1874 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Habit Telemetry & Streak Matrix</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+          }
+        }
+      }
+    };
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    /* Custom scrollbar for sleek analytical look */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.35);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(100, 116, 139, 0.55);
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-200">
+  <!-- Top Accent Gradient -->
+  <div class="h-1 w-full bg-gradient-to-r from-indigo-500 via-cyan-400 to-emerald-400"></div>
+
+  <!-- Toast Notification Banner -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+    <!-- Header Section -->
+    <header class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 pb-6 border-b border-slate-200 dark:border-slate-800/80">
+      <div class="flex items-start sm:items-center gap-3.5">
+        <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center shadow-lg shadow-indigo-500/25 shrink-0">
+          <i data-lucide="flame" class="w-6 h-6 text-white"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2.5 flex-wrap">
+            <h1 class="text-xl sm:text-2xl font-bold tracking-tight">
+              Habit <span class="text-indigo-500">Telemetry</span> & Streak Matrix
+            </h1>
+            <span class="text-[11px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full border bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-400 dark:border-indigo-500/20">
+              Standalone HTML
+            </span>
+          </div>
+          <p class="text-xs sm:text-sm mt-0.5 text-slate-500 dark:text-slate-400">
+            High-signal daily execution matrix, target adherence & AI performance diagnostics
+          </p>
+        </div>
+      </div>
+
+      <!-- Header Right Controls -->
+      <div class="flex flex-wrap items-center gap-2">
+        <!-- Focus Day Selector -->
+        <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium bg-white border-slate-200 text-slate-700 shadow-sm dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300" title="Choose active focus day for 'Completed Today' & streak calculations">
+          <i data-lucide="calendar" class="w-3.5 h-3.5 text-indigo-500"></i>
+          <span class="text-slate-500 dark:text-slate-400">Today:</span>
+          <select id="focusDaySelect" class="bg-transparent font-semibold text-indigo-600 dark:text-indigo-400 focus:outline-none cursor-pointer pr-1">
+            <option value="0" class="bg-white dark:bg-slate-900">Monday</option>
+            <option value="1" class="bg-white dark:bg-slate-900">Tuesday</option>
+            <option value="2" class="bg-white dark:bg-slate-900">Wednesday</option>
+            <option value="3" class="bg-white dark:bg-slate-900">Thursday</option>
+            <option value="4" class="bg-white dark:bg-slate-900">Friday</option>
+            <option value="5" class="bg-white dark:bg-slate-900">Saturday</option>
+            <option value="6" class="bg-white dark:bg-slate-900">Sunday</option>
+          </select>
+        </div>
+
+        <!-- API Key Modal Button -->
+        <button id="openApiKeyModalBtn" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border transition bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer">
+          <i data-lucide="key-round" class="w-3.5 h-3.5 text-amber-500"></i>
+          <span>API Key</span>
+          <span id="apiKeyStatusDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+        </button>
+
+        <!-- JSON Export & Import -->
+        <button id="exportJsonBtn" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border transition bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer" title="Backup habits to JSON file">
+          <i data-lucide="download" class="w-3.5 h-3.5"></i>
+          <span class="hidden sm:inline">Export</span>
+        </button>
+        <label class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border transition bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer" title="Restore habits from JSON file">
+          <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+          <span class="hidden sm:inline">Import</span>
+          <input type="file" id="importJsonInput" accept=".json" class="hidden" />
+        </label>
+
+        <!-- Reset Week Button -->
+        <button id="openResetModalBtn" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border transition bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+          <span>Reset Week</span>
+        </button>
+
+        <!-- Dark/Light Theme Toggle -->
+        <button id="themeToggleBtn" class="p-2 rounded-xl border transition bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm dark:bg-slate-900 dark:border-slate-800 dark:text-amber-400 dark:hover:bg-slate-800 cursor-pointer" aria-label="Toggle Theme">
+          <i data-lucide="sun" id="themeIconSun" class="w-4 h-4 hidden dark:block"></i>
+          <i data-lucide="moon" id="themeIconMoon" class="w-4 h-4 block dark:hidden"></i>
+        </button>
+
+        <!-- AI Protocol Architect Button -->
+        <button id="openArchitectModalBtn" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition cursor-pointer bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:border-indigo-500/30 dark:text-indigo-300 dark:hover:bg-indigo-500/20">
+          <i data-lucide="wand-2" class="w-4 h-4 text-indigo-500 dark:text-indigo-400"></i>
+          <span>✨ AI Architect</span>
+        </button>
+
+        <!-- Add Habit Button -->
+        <button id="openAddHabitModalBtn" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/25 transition active:scale-95 cursor-pointer">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span>+ Add Habit</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- 4 Real-Time KPI Summary Cards -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+      <!-- KPI 1: Weekly Target Rate -->
+      <div class="p-5 rounded-2xl border bg-white border-slate-200/90 shadow-sm dark:bg-slate-900/70 dark:border-slate-800/90">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Weekly Target Rate</span>
+          <div class="w-8 h-8 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+            <i data-lucide="trending-up" class="w-4 h-4"></i>
+          </div>
+        </div>
+        <div class="mt-3 flex items-baseline gap-2.5">
+          <span id="kpiTargetRate" class="text-3xl font-bold tracking-tight">0%</span>
+          <span id="kpiRawGridRate" class="text-xs font-medium text-slate-500 dark:text-slate-400">(0% raw 7d grid)</span>
+        </div>
+        <div class="mt-3 w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+          <div id="kpiTargetBar" class="h-full bg-gradient-to-r from-indigo-500 to-cyan-400 rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- KPI 2: Active Momentum -->
+      <div class="p-5 rounded-2xl border bg-white border-slate-200/90 shadow-sm dark:bg-slate-900/70 dark:border-slate-800/90">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Active Momentum</span>
+          <div class="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+            <i data-lucide="flame" class="w-4 h-4"></i>
+          </div>
+        </div>
+        <div class="mt-3 flex items-baseline gap-2">
+          <span id="kpiActiveStreaks" class="text-3xl font-bold tracking-tight">0</span>
+          <span class="text-xs font-medium text-slate-500 dark:text-slate-400">active streaks (≥2d)</span>
+        </div>
+        <p class="mt-2.5 text-xs flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+          <span>Best current streak:</span>
+          <span id="kpiBestStreak" class="font-semibold text-amber-500 dark:text-amber-400">0 days</span>
+        </p>
+      </div>
+
+      <!-- KPI 3: Completed Today -->
+      <div class="p-5 rounded-2xl border bg-white border-slate-200/90 shadow-sm dark:bg-slate-900/70 dark:border-slate-800/90">
+        <div class="flex items-center justify-between">
+          <span id="kpiTodayLabel" class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Completed Today</span>
+          <div class="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+            <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+          </div>
+        </div>
+        <div class="mt-3 flex items-baseline justify-between">
+          <div class="flex items-baseline gap-2">
+            <span id="kpiCompletedToday" class="text-3xl font-bold tracking-tight">0/0</span>
+            <span id="kpiCompletedTodayPct" class="text-xs font-semibold text-emerald-500 dark:text-emerald-400">0%</span>
+          </div>
+          <button id="completeAllTodayBtn" class="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
+            Complete All Today
+          </button>
+        </div>
+        <p id="kpiTodaySubtext" class="mt-2.5 text-xs text-slate-500 dark:text-slate-400">
+          Log your daily check-ins below
+        </p>
+      </div>
+
+      <!-- KPI 4: Top Performing Category -->
+      <div class="p-5 rounded-2xl border bg-white border-slate-200/90 shadow-sm dark:bg-slate-900/70 dark:border-slate-800/90">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Top Category</span>
+          <div class="w-8 h-8 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-500 dark:text-cyan-400">
+            <i data-lucide="award" class="w-4 h-4"></i>
+          </div>
+        </div>
+        <div class="mt-3 flex items-baseline gap-2 truncate">
+          <span id="kpiBestCategory" class="text-2xl font-bold tracking-tight truncate">—</span>
+        </div>
+        <div class="mt-2.5 flex items-center justify-between text-xs">
+          <span class="text-slate-500 dark:text-slate-400">Target adherence:</span>
+          <span id="kpiBestCategoryRate" class="font-semibold text-cyan-600 dark:text-cyan-400">0%</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interactive Charts Section -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+      <!-- 7-Day Daily Completion Velocity Chart -->
+      <div class="lg:col-span-2 p-5 sm:p-6 rounded-2xl border bg-white border-slate-200/90 shadow-sm dark:bg-slate-900/70 dark:border-slate-800/90 flex flex-col justify-between">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-base sm:text-lg font-bold tracking-tight">7-Day Daily Completion Velocity</h2>
+              <span class="text-[11px] px-2 py-0.5 rounded-md font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">Mon – Sun</span>
+            </div>
+            <p class="text-xs mt-0.5 text-slate-500 dark:text-slate-400">
+              Real-time percentage of scheduled habits completed across each day of the week
+            </p>
+          </div>
+        </div>
+
+        <div class="relative h-64 w-full">
+          <canvas id="velocityChartCanvas"></canvas>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div class="flex items-center gap-4">
+            <span class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 inline-block"></span>
+              <span class="text-slate-500 dark:text-slate-400">Daily Completion Rate (%)</span>
+            </span>
+          </div>
+          <span class="text-[11px] text-slate-400 dark:text-slate-500">
+            Click any day cell in the matrix below to update charts immediately
+          </span>
+        </div>
+      </div>
+
+      <!-- Category Adherence Breakdown (Bar Chart + Target Progress Bars) -->
+      <div class="p-5 sm:p-6 rounded-2xl border bg-white border-slate-200/90 shadow-sm dark:bg-slate-900/70 dark:border-slate-800/90 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <h2 class="text-base sm:text-lg font-bold tracking-tight">Category Adherence</h2>
+            <i data-lucide="target" class="w-4 h-4 text-indigo-500 dark:text-indigo-400"></i>
+          </div>
+          <p class="text-xs mb-4 text-slate-500 dark:text-slate-400">
+            Completion ratio against weekly target frequencies
+          </p>
+
+          <!-- Compact Category Bar Chart -->
+          <div class="relative h-36 w-full mb-4">
+            <canvas id="categoryChartCanvas"></canvas>
+          </div>
+
+          <!-- Progress Bar Breakdown List -->
+          <div id="categoryBreakdownList" class="space-y-3 mt-2"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ✨ AI Execution & Streak Telemetry Audit Panel -->
+    <section class="mt-6 rounded-2xl border p-5 sm:p-6 transition-all bg-gradient-to-br from-white via-slate-50 to-indigo-50/40 border-indigo-200/80 shadow-sm dark:from-slate-900/90 dark:via-slate-900/70 dark:to-indigo-950/30 dark:border-indigo-500/25">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-start gap-3.5">
+          <div class="w-10 h-10 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-500 dark:text-indigo-400 shrink-0 mt-0.5">
+            <i data-lucide="brain-circuit" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h2 class="text-base sm:text-lg font-bold tracking-tight">
+                ✨ AI Execution & Streak Telemetry Audit
+              </h2>
+              <span class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md border bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-500/10 dark:text-indigo-300 dark:border-indigo-500/20">
+                Gemini 2.5 Flash
+              </span>
+            </div>
+            <p class="text-xs mt-0.5 text-slate-500 dark:text-slate-400">
+              Run an on-demand quantitative audit on your habit matrix to diagnose bottlenecks and generate 3 mechanical protocol adjustments
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2.5 self-start md:self-center">
+          <button id="dismissAuditBtn" class="hidden px-3 py-2 rounded-xl text-xs font-medium border transition cursor-pointer border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800">
+            Dismiss
+          </button>
+          <button id="runAiAuditBtn" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white shadow-lg shadow-indigo-600/25 transition cursor-pointer">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+            <span id="runAiAuditBtnText">Generate AI Audit</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Error Alert -->
+      <div id="auditErrorBox" class="hidden mt-4 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 dark:text-rose-400 text-xs flex items-center justify-between gap-2">
+        <span id="auditErrorText"></span>
+        <button id="auditErrorKeyBtn" class="underline font-semibold shrink-0 cursor-pointer">Configure API Key</button>
+      </div>
+
+      <!-- Audit Output Container -->
+      <div id="auditResultContainer" class="hidden mt-5 pt-5 border-t border-slate-200 dark:border-slate-800 grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div class="lg:col-span-5 flex flex-col justify-between gap-4">
+          <div class="p-4 rounded-xl border bg-white border-slate-200 dark:bg-slate-950/70 dark:border-slate-800">
+            <div class="flex items-center justify-between gap-3 mb-2">
+              <span class="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">System Discipline Rating</span>
+              <span id="auditGradeBadge" class="px-2.5 py-1 rounded-lg text-sm font-extrabold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">Grade: A</span>
+            </div>
+            <p id="auditHeadline" class="text-sm font-semibold leading-snug"></p>
+          </div>
+          <div class="p-4 rounded-xl border flex-1 bg-white border-slate-200 dark:bg-slate-950/70 dark:border-slate-800">
+            <div class="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1.5 flex items-center gap-1.5">
+              <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+              <span>Bottleneck & Variance Diagnosis</span>
+            </div>
+            <p id="auditBottleneck" class="text-xs leading-relaxed text-slate-600 dark:text-slate-300"></p>
+          </div>
+        </div>
+        <div class="lg:col-span-7">
+          <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2.5 flex items-center gap-1.5">
+            <i data-lucide="shield-check" class="w-4 h-4 text-emerald-500 dark:text-emerald-400"></i>
+            <span>3 Rules-Based Mechanical Protocol Adjustments</span>
+          </div>
+          <div id="auditAdjustmentsList" class="grid grid-cols-1 gap-3"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interactive 7-Day Execution Matrix -->
+    <section class="mt-6 rounded-2xl border overflow-hidden bg-white border-slate-200/90 shadow-sm dark:bg-slate-900/70 dark:border-slate-800/90">
+      <div class="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-base sm:text-lg font-bold tracking-tight flex items-center gap-2">
+            <span>Interactive 7-Day Execution Matrix</span>
+            <span id="matrixHabitCountBadge" class="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">0 Habits</span>
+          </h2>
+          <p class="text-xs mt-0.5 text-slate-500 dark:text-slate-400">
+            Click any Monday–Sunday checkbox cell to log daily goals and recalculate streaks
+          </p>
+        </div>
+
+        <!-- Category Filter Tabs & Search -->
+        <div class="flex flex-wrap items-center gap-2">
+          <div id="categoryFilterTabs" class="flex flex-wrap items-center gap-1.5"></div>
+          <div class="relative flex-1 sm:flex-initial sm:w-48">
+            <input
+              type="text"
+              id="habitSearchInput"
+              placeholder="Search habits..."
+              class="w-full pl-3 pr-7 py-1.5 rounded-xl text-xs border focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-200 dark:placeholder-slate-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Matrix Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse min-w-[780px]">
+          <thead>
+            <tr id="matrixTableHeadRow" class="border-b text-[11px] font-semibold uppercase tracking-wider bg-slate-50/80 border-slate-200 text-slate-500 dark:bg-slate-950/60 dark:border-slate-800 dark:text-slate-400">
+              <!-- Populated dynamically -->
+            </tr>
+          </thead>
+          <tbody id="matrixTableBody" class="divide-y divide-slate-200/70 dark:divide-slate-800/70 text-sm">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- MODAL 1: Add / Edit Habit Modal (with ✨ Optimize with AI) -->
+  <div id="habitModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm">
+    <div class="w-full max-w-md rounded-2xl border p-6 shadow-2xl bg-white border-slate-200 text-slate-900 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+        <h3 id="habitModalTitle" class="text-lg font-bold">Create New Habit</h3>
+        <button id="closeHabitModalBtn" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <form id="habitForm" class="mt-5 space-y-4">
+        <input type="hidden" id="habitFormId" />
+        <div id="habitFormError" class="hidden p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 dark:text-rose-400 text-xs font-medium"></div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Habit Name *</label>
+            <button type="button" id="optimizeHabitAiBtn" class="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">
+              <i data-lucide="sparkles" class="w-3 h-3"></i>
+              <span id="optimizeHabitAiBtnText">✨ Optimize with AI</span>
+            </button>
+          </div>
+          <input
+            type="text"
+            id="habitFormName"
+            placeholder="e.g., Pre-Session Market Prep or Zone 2 Cardio"
+            class="w-full px-3.5 py-2.5 rounded-xl text-sm border focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 border-slate-200 text-slate-900 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100"
+          />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5 text-slate-500 dark:text-slate-400">Category</label>
+            <select id="habitFormCategory" class="w-full px-3.5 py-2.5 rounded-xl text-sm border focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 border-slate-200 text-slate-900 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100">
+              <option value="Trading/Finance">Trading/Finance</option>
+              <option value="Deep Work">Deep Work</option>
+              <option value="Health">Health</option>
+              <option value="Learning">Learning</option>
+              <option value="Mindfulness">Mindfulness</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5 text-slate-500 dark:text-slate-400">
+              Weekly Target (<span id="habitFormTargetLabel">5</span>d / wk)
+            </label>
+            <input type="hidden" id="habitFormTarget" value="5" />
+            <div id="targetFreqButtons" class="flex items-center gap-1.5 pt-0.5">
+              <button type="button" data-freq="3" class="freq-btn flex-1 py-2 rounded-xl text-xs font-bold border transition cursor-pointer">3d</button>
+              <button type="button" data-freq="4" class="freq-btn flex-1 py-2 rounded-xl text-xs font-bold border transition cursor-pointer">4d</button>
+              <button type="button" data-freq="5" class="freq-btn flex-1 py-2 rounded-xl text-xs font-bold border transition cursor-pointer">5d</button>
+              <button type="button" data-freq="6" class="freq-btn flex-1 py-2 rounded-xl text-xs font-bold border transition cursor-pointer">6d</button>
+              <button type="button" data-freq="7" class="freq-btn flex-1 py-2 rounded-xl text-xs font-bold border transition cursor-pointer">7d</button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5 text-slate-500 dark:text-slate-400">Execution Cue / Protocol Notes</label>
+          <input
+            type="text"
+            id="habitFormNotes"
+            placeholder="e.g., Mark HTF liquidity levels at 08:30 EST before opening charts"
+            class="w-full px-3.5 py-2.5 rounded-xl text-sm border focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 border-slate-200 text-slate-900 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100"
+          />
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-200 dark:border-slate-800">
+          <button type="button" id="cancelHabitModalBtn" class="px-4 py-2 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer">
+            Cancel
+          </button>
+          <button type="submit" class="px-5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/25 cursor-pointer">
+            Save Habit
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2: ✨ AI Protocol Architect Modal -->
+  <div id="architectModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm">
+    <div class="w-full max-w-2xl rounded-2xl border p-6 shadow-2xl max-h-[90vh] overflow-y-auto bg-white border-slate-200 text-slate-900 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-500 dark:text-indigo-400">
+            <i data-lucide="wand-2" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold">✨ AI Protocol Architect</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Convert any high-level objective into 4 structured weekly habits using Gemini</p>
+          </div>
+        </div>
+        <button id="closeArchitectModalBtn" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <form id="architectForm" class="mt-4 space-y-3">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5 text-slate-500 dark:text-slate-400">Target Objective or Domain Focus</label>
+          <div class="flex flex-col sm:flex-row gap-2">
+            <input
+              type="text"
+              id="architectGoalInput"
+              placeholder="e.g., Systematic XAUUSD & SPY 0DTE Trading Discipline"
+              class="flex-1 px-3.5 py-2.5 rounded-xl text-sm border focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 border-slate-200 text-slate-900 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100"
+            />
+            <button type="submit" id="generateProtocolBtn" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white shadow-lg shadow-indigo-600/25 cursor-pointer shrink-0">
+              <i data-lucide="sparkles" class="w-4 h-4"></i>
+              <span id="generateProtocolBtnText">Design 4-Habit Stack</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Presets -->
+        <div class="flex flex-wrap items-center gap-1.5 pt-1">
+          <span class="text-[11px] text-slate-400 mr-1">Quick Presets:</span>
+          <button type="button" data-preset="Systematic XAUUSD & SPY 0DTE Trading Discipline" class="architect-preset-btn text-[11px] px-2.5 py-1 rounded-lg border transition cursor-pointer bg-slate-50 border-slate-200 text-slate-600 hover:border-indigo-400 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300 dark:hover:border-indigo-500/40">
+            Systematic XAUUSD & SPY 0DTE Trading Discipline
+          </button>
+          <button type="button" data-preset="Executive Operations & Physical Conditioning" class="architect-preset-btn text-[11px] px-2.5 py-1 rounded-lg border transition cursor-pointer bg-slate-50 border-slate-200 text-slate-600 hover:border-indigo-400 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300 dark:hover:border-indigo-500/40">
+            Executive Operations & Physical Conditioning
+          </button>
+        </div>
+      </form>
+
+      <div id="architectErrorBox" class="hidden mt-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 dark:text-rose-400 text-xs"></div>
+
+      <!-- Generated Suggestions List -->
+      <div id="architectResultsContainer" class="hidden mt-5 pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Recommended 4-Habit Protocol</span>
+          <button type="button" id="importAllArchitectBtn" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition cursor-pointer">
+            <span>+ Import All 4 Habits</span>
+          </button>
+        </div>
+        <div id="architectSuggestionsList" class="space-y-2.5"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: API Key Settings Modal -->
+  <div id="apiKeyModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm">
+    <div class="w-full max-w-md rounded-2xl border p-6 shadow-2xl bg-white border-slate-200 text-slate-900 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+        <div class="flex items-center gap-2">
+          <i data-lucide="key-round" class="w-4 h-4 text-amber-500"></i>
+          <h3 class="text-base font-bold">Google AI Studio API Key</h3>
+        </div>
+        <button id="closeApiKeyModalBtn" class="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <p class="text-xs mt-3 leading-relaxed text-slate-500 dark:text-slate-400">
+        To use the AI Telemetry Audit, AI Protocol Architect, and Smart Habit Optimizer offline on your computer, paste your free <strong>Google AI Studio</strong> Gemini API key below. It is stored strictly in your browser's local storage (`localStorage`) and never leaves your device.
+      </p>
+
+      <div class="mt-4">
+        <label class="block text-xs font-semibold uppercase tracking-wider mb-1.5 text-slate-500 dark:text-slate-400">Gemini API Key</label>
+        <input
+          type="password"
+          id="apiKeyInput"
+          placeholder="AIzaSy..."
+          class="w-full px-3.5 py-2.5 rounded-xl text-sm border focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 border-slate-200 text-slate-900 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-100"
+        />
+      </div>
+
+      <div class="mt-5 flex items-center justify-between gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+        <button type="button" id="clearApiKeyBtn" class="px-3 py-2 rounded-xl text-xs font-semibold text-rose-500 hover:bg-rose-500/10 cursor-pointer">
+          Clear Saved Key
+        </button>
+        <div class="flex items-center gap-2">
+          <button type="button" id="cancelApiKeyBtn" class="px-4 py-2 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600 dark:border-slate-800 dark:text-slate-300 cursor-pointer">
+            Cancel
+          </button>
+          <button type="button" id="saveApiKeyBtn" class="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow cursor-pointer">
+            Save Key
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 4: Reset Week / Restore Demo Data Modal -->
+  <div id="resetModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm">
+    <div class="w-full max-w-md rounded-2xl border p-6 shadow-2xl bg-white border-slate-200 text-slate-900 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+        <h3 class="text-base font-bold flex items-center gap-2">
+          <i data-lucide="rotate-ccw" class="w-4 h-4 text-indigo-500"></i>
+          <span>Manage Weekly Matrix Data</span>
+        </h3>
+        <button id="closeResetModalBtn" class="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <p class="text-xs mt-3 leading-relaxed text-slate-500 dark:text-slate-400">
+        Choose whether to clear all Monday–Sunday checkmarks for a fresh weekly sprint while keeping your custom habits, or restore the default sample dataset.
+      </p>
+      <div class="mt-5 flex flex-col gap-2.5">
+        <button id="confirmClearWeekBtn" class="w-full py-2.5 px-4 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition cursor-pointer">
+          Clear Checkmarks for New Week (Keep Habits)
+        </button>
+        <button id="confirmRestoreDefaultsBtn" class="w-full py-2.5 px-4 rounded-xl text-xs font-semibold border transition cursor-pointer bg-slate-100 border-slate-200 text-slate-800 hover:bg-slate-200 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-800">
+          Restore Default Sample Habits & Telemetry
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY_HABITS = 'habit_telemetry_matrix_v1';
+    const STORAGE_KEY_THEME = 'habit_telemetry_theme_v1';
+    const STORAGE_KEY_API = 'habit_telemetry_gemini_key_v1';
+
+    const DAYS = [
+      { short: 'Mon', full: 'Monday', index: 0 },
+      { short: 'Tue', full: 'Tuesday', index: 1 },
+      { short: 'Wed', full: 'Wednesday', index: 2 },
+      { short: 'Thu', full: 'Thursday', index: 3 },
+      { short: 'Fri', full: 'Friday', index: 4 },
+      { short: 'Sat', full: 'Saturday', index: 5 },
+      { short: 'Sun', full: 'Sunday', index: 6 }
+    ];
+
+    const CATEGORIES = {
+      'Trading/Finance': {
+        color: '#f59e0b',
+        badgeDark: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+        badgeLight: 'bg-amber-50 text-amber-700 border-amber-200',
+        dot: 'bg-amber-500'
+      },
+      'Deep Work': {
+        color: '#6366f1',
+        badgeDark: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+        badgeLight: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+        dot: 'bg-indigo-500'
+      },
+      'Health': {
+        color: '#10b981',
+        badgeDark: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+        badgeLight: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        dot: 'bg-emerald-500'
+      },
+      'Learning': {
+        color: '#06b6d4',
+        badgeDark: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+        badgeLight: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+        dot: 'bg-cyan-500'
+      },
+      'Mindfulness': {
+        color: '#ec4899',
+        badgeDark: 'bg-pink-500/10 text-pink-400 border-pink-500/20',
+        badgeLight: 'bg-pink-50 text-pink-700 border-pink-200',
+        dot: 'bg-pink-500'
+      }
+    };
+
+    const DEFAULT_HABITS = [
+      {
+        id: 'h-1',
+        name: 'Pre-Session Liquidity & Macro Prep',
+        category: 'Trading/Finance',
+        targetFrequency: 5,
+        logs: [true, true, true, false, true, false, false],
+        notes: 'Mark HTF XAUUSD & SPY key levels + high-impact news before 08:30 EST'
+      },
+      {
+        id: 'h-2',
+        name: 'Post-Trade R-Multiple & Screenshot Log',
+        category: 'Trading/Finance',
+        targetFrequency: 5,
+        logs: [true, false, true, true, true, false, false],
+        notes: 'Grade setup adherence (A/B/C) & log execution variance immediately after close'
+      },
+      {
+        id: 'h-3',
+        name: 'Deep Work Block (90m Uninterrupted)',
+        category: 'Deep Work',
+        targetFrequency: 5,
+        logs: [true, true, true, true, true, false, false],
+        notes: 'Phone in another room, zero Slack or notifications during core build block'
+      },
+      {
+        id: 'h-4',
+        name: 'Strength Training + Zone 2 Cardio (60m)',
+        category: 'Health',
+        targetFrequency: 5,
+        logs: [true, true, false, true, true, true, false],
+        notes: '45m progressive overload + 15m incline treadmill cooldown'
+      },
+      {
+        id: 'h-5',
+        name: 'Electrolytes & Hydration (3.0 L)',
+        category: 'Health',
+        targetFrequency: 7,
+        logs: [true, true, true, true, true, true, true],
+        notes: '500ml water + electrolytes within 20 minutes of waking'
+      },
+      {
+        id: 'h-6',
+        name: 'Quantitative / Systems Reading (30m)',
+        category: 'Learning',
+        targetFrequency: 6,
+        logs: [true, true, true, true, false, true, true],
+        notes: 'Read technical papers, market microstructure, or engineering architecture'
+      },
+      {
+        id: 'h-7',
+        name: 'Evening Wind-Down (Zero Screens 45m)',
+        category: 'Mindfulness',
+        targetFrequency: 7,
+        logs: [false, true, true, true, true, true, false],
+        notes: 'Blue-light cutoff + 10m physiological sigh breathwork before sleep'
+      }
+    ];
+
+    // Application State
+    let state = {
+      darkMode: true,
+      habits: [],
+      selectedDayIndex: (() => {
+        const jsDay = new Date().getDay();
+        return jsDay === 0 ? 6 : jsDay - 1;
+      })(),
+      selectedCategory: 'All',
+      searchQuery: '',
+      architectSuggestions: [],
+      addedSuggestionIndexes: []
+    };
+
+    let velocityChartInstance = null;
+    let categoryChartInstance = null;
+
+    // Show non-intrusive toast message
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      const borderColor = type === 'success' ? 'border-emerald-500/40 text-emerald-400' : type === 'error' ? 'border-rose-500/40 text-rose-400' : 'border-indigo-500/40 text-indigo-300';
+      toast.className = `px-4 py-2.5 rounded-xl border bg-slate-900/95 backdrop-blur-md shadow-xl text-xs font-semibold ${borderColor} transition-all duration-300`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, 3200);
+    }
+
+    // Load saved state from localStorage
+    function loadState() {
+      try {
+        const savedTheme = localStorage.getItem(STORAGE_KEY_THEME);
+        if (savedTheme !== null) {
+          state.darkMode = savedTheme === 'dark';
+        }
+        const savedHabits = localStorage.getItem(STORAGE_KEY_HABITS);
+        if (savedHabits) {
+          const parsed = JSON.parse(savedHabits);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            state.habits = parsed;
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Error loading localStorage:', err);
+      }
+      state.habits = JSON.parse(JSON.stringify(DEFAULT_HABITS));
+    }
+
+    function saveHabits() {
+      try {
+        localStorage.setItem(STORAGE_KEY_HABITS, JSON.stringify(state.habits));
+      } catch (err) {
+        console.error('Error saving habits:', err);
+      }
+    }
+
+    function applyTheme() {
+      const htmlEl = document.documentElement;
+      if (state.darkMode) {
+        htmlEl.classList.add('dark');
+      } else {
+        htmlEl.classList.remove('dark');
+      }
+      localStorage.setItem(STORAGE_KEY_THEME, state.darkMode ? 'dark' : 'light');
+      updateCharts();
+    }
+
+    function updateApiKeyIndicator() {
+      const savedKey = (localStorage.getItem(STORAGE_KEY_API) || '').trim();
+      const dot = document.getElementById('apiKeyStatusDot');
+      if (savedKey) {
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+      } else {
+        dot.className = 'w-2 h-2 rounded-full bg-slate-400';
+      }
+    }
+
+    // Calculate consecutive streak backward from active selectedDayIndex
+    function calculateStreak(logs, activeDayIndex) {
+      let run = 0;
+      let startIdx = activeDayIndex;
+      if (!logs[startIdx] && startIdx > 0) {
+        startIdx = startIdx - 1;
+      }
+      for (let i = startIdx; i >= 0; i--) {
+        if (logs[i]) {
+          run++;
+        } else {
+          break;
+        }
+      }
+      return run;
+    }
+
+    function computeAnalytics() {
+      const habits = state.habits;
+      const todayIdx = state.selectedDayIndex;
+
+      if (habits.length === 0) {
+        return {
+          overallRate: 0,
+          targetAdjustedRate: 0,
+          activeStreaks: 0,
+          bestStreak: 0,
+          completedToday: 0,
+          totalHabits: 0,
+          bestCategory: 'None',
+          bestCategoryRate: 0,
+          dailyRates: [0, 0, 0, 0, 0, 0, 0],
+          categoryBreakdown: []
+        };
+      }
+
+      let totalCompleted = 0;
+      let totalTarget = 0;
+      let activeStreaks = 0;
+      let bestStreak = 0;
+      let completedToday = 0;
+
+      const catTotals = {};
+      Object.keys(CATEGORIES).forEach(cat => {
+        catTotals[cat] = { completed: 0, target: 0, count: 0 };
+      });
+
+      habits.forEach(h => {
+        const doneCount = h.logs.filter(Boolean).length;
+        totalCompleted += doneCount;
+        totalTarget += h.targetFrequency;
+
+        const streak = calculateStreak(h.logs, todayIdx);
+        if (streak >= 2) activeStreaks++;
+        if (streak > bestStreak) bestStreak = streak;
+
+        if (h.logs[todayIdx]) completedToday++;
+
+        const cat = CATEGORIES[h.category] ? h.category : 'Deep Work';
+        catTotals[cat].completed += doneCount;
+        catTotals[cat].target += h.targetFrequency;
+        catTotals[cat].count += 1;
+      });
+
+      const overallRate = Math.round((totalCompleted / (habits.length * 7)) * 100);
+      const targetAdjustedRate = totalTarget > 0 ? Math.min(100, Math.round((totalCompleted / totalTarget) * 100)) : 0;
+
+      let bestCategory = 'None';
+      let bestCategoryRate = -1;
+      const categoryBreakdown = [];
+
+      Object.entries(catTotals).forEach(([catName, stats]) => {
+        if (stats.count > 0) {
+          const rate = Math.min(100, Math.round((stats.completed / stats.target) * 100));
+          categoryBreakdown.push({
+            category: catName,
+            rate,
+            completed: stats.completed,
+            target: stats.target,
+            count: stats.count,
+            color: CATEGORIES[catName].color
+          });
+          if (rate > bestCategoryRate) {
+            bestCategoryRate = rate;
+            bestCategory = catName;
+          }
+        }
+      });
+
+      categoryBreakdown.sort((a, b) => b.rate - a.rate);
+
+      const dailyRates = DAYS.map((_, dIdx) => {
+        const done = habits.reduce((acc, h) => acc + (h.logs[dIdx] ? 1 : 0), 0);
+        return Math.round((done / habits.length) * 100);
+      });
+
+      return {
+        overallRate,
+        targetAdjustedRate,
+        activeStreaks,
+        bestStreak,
+        completedToday,
+        totalHabits: habits.length,
+        bestCategory,
+        bestCategoryRate: bestCategoryRate >= 0 ? bestCategoryRate : 0,
+        dailyRates,
+        categoryBreakdown
+      };
+    }
+
+    function renderDashboard() {
+      const stats = computeAnalytics();
+      const focusDayObj = DAYS[state.selectedDayIndex];
+
+      // Update Focus Day Select
+      document.getElementById('focusDaySelect').value = String(state.selectedDayIndex);
+
+      // Update KPI Cards
+      document.getElementById('kpiTargetRate').textContent = `${stats.targetAdjustedRate}%`;
+      document.getElementById('kpiRawGridRate').textContent = `(${stats.overallRate}% raw 7d grid)`;
+      document.getElementById('kpiTargetBar').style.width = `${stats.targetAdjustedRate}%`;
+
+      document.getElementById('kpiActiveStreaks').textContent = String(stats.activeStreaks);
+      document.getElementById('kpiBestStreak').textContent = `${stats.bestStreak} days`;
+
+      document.getElementById('kpiTodayLabel').textContent = `Completed (${focusDayObj.short})`;
+      document.getElementById('kpiCompletedToday').textContent = `${stats.completedToday}/${stats.totalHabits}`;
+      const todayPct = stats.totalHabits > 0 ? Math.round((stats.completedToday / stats.totalHabits) * 100) : 0;
+      document.getElementById('kpiCompletedTodayPct').textContent = `${todayPct}%`;
+
+      const remaining = stats.totalHabits - stats.completedToday;
+      document.getElementById('kpiTodaySubtext').textContent =
+        remaining === 0 && stats.totalHabits > 0
+          ? `All ${focusDayObj.full} protocol targets achieved!`
+          : `${remaining} habit(s) remaining for ${focusDayObj.full}`;
+
+      const completeAllBtn = document.getElementById('completeAllTodayBtn');
+      if (remaining > 0 && stats.totalHabits > 0) {
+        completeAllBtn.classList.remove('hidden');
+      } else {
+        completeAllBtn.classList.add('hidden');
+      }
+
+      document.getElementById('kpiBestCategory').textContent = stats.bestCategory;
+      document.getElementById('kpiBestCategoryRate').textContent = `${stats.bestCategoryRate}%`;
+
+      // Render Category Breakdown Progress Bars
+      const catListEl = document.getElementById('categoryBreakdownList');
+      if (stats.categoryBreakdown.length === 0) {
+        catListEl.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">No habits logged yet.</p>`;
+      } else {
+        catListEl.innerHTML = stats.categoryBreakdown.map(item => `
+          <div class="space-y-1">
+            <div class="flex items-center justify-between text-xs">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${item.color}"></span>
+                <span class="font-semibold">${item.category}</span>
+                <span class="text-[11px] text-slate-400">(${item.count})</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <span class="font-bold">${item.rate}%</span>
+                <span class="text-[11px] text-slate-400">(${item.completed}/${item.target}d)</span>
+              </div>
+            </div>
+            <div class="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+              <div class="h-full rounded-full transition-all duration-500" style="width: ${item.rate}%; background-color: ${item.color}"></div>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      // Render Category Filter Tabs
+      const tabsContainer = document.getElementById('categoryFilterTabs');
+      const allCategories = ['All', ...Object.keys(CATEGORIES)];
+      tabsContainer.innerHTML = allCategories.map(cat => {
+        const isActive = state.selectedCategory === cat;
+        const activeClasses = 'bg-indigo-600 text-white shadow-sm';
+        const inactiveClasses = 'bg-slate-100 text-slate-600 hover:text-slate-900 dark:bg-slate-950/80 dark:text-slate-400 dark:hover:text-slate-200 border border-transparent dark:border-slate-800';
+        return `
+          <button type="button" data-cat="${cat}" class="cat-filter-btn px-3 py-1.5 rounded-xl text-xs font-medium transition cursor-pointer ${isActive ? activeClasses : inactiveClasses}">
+            ${cat}
+          </button>
+        `;
+      }).join('');
+
+      document.querySelectorAll('.cat-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.selectedCategory = btn.getAttribute('data-cat');
+          renderDashboard();
+        });
+      });
+
+      // Render Matrix Table Header
+      const theadRow = document.getElementById('matrixTableHeadRow');
+      theadRow.innerHTML = `
+        <th class="py-3.5 pl-6 pr-4 w-[290px]">Habit & Execution Cue</th>
+        ${DAYS.map(d => {
+          const isFocus = d.index === state.selectedDayIndex;
+          const focusHighlight = isFocus ? 'bg-indigo-50/90 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400' : '';
+          return `
+            <th class="py-3.5 px-2 text-center w-14 transition-colors ${focusHighlight}">
+              <button type="button" data-dayidx="${d.index}" class="focus-day-header-btn flex flex-col items-center mx-auto cursor-pointer" title="Set ${d.full} as active focus day">
+                <span>${d.short}</span>
+                ${isFocus ? '<span class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1"></span>' : ''}
+              </button>
+            </th>
+          `;
+        }).join('')}
+        <th class="py-3.5 px-4 text-center w-28">Streak</th>
+        <th class="py-3.5 px-4 text-center w-36">Weekly Goal</th>
+        <th class="py-3.5 pl-2 pr-6 text-right w-24">Actions</th>
+      `;
+
+      document.querySelectorAll('.focus-day-header-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.selectedDayIndex = Number(btn.getAttribute('data-dayidx'));
+          renderDashboard();
+        });
+      });
+
+      // Filter Habits & Render Matrix Body
+      const filtered = state.habits.filter(h => {
+        const matchesCat = state.selectedCategory === 'All' || h.category === state.selectedCategory;
+        const q = state.searchQuery.toLowerCase();
+        const matchesSearch =
+          h.name.toLowerCase().includes(q) ||
+          h.category.toLowerCase().includes(q) ||
+          (h.notes && h.notes.toLowerCase().includes(q));
+        return matchesCat && matchesSearch;
+      });
+
+      document.getElementById('matrixHabitCountBadge').textContent = `${filtered.length} ${filtered.length === 1 ? 'Habit' : 'Habits'}`;
+
+      const tbody = document.getElementById('matrixTableBody');
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="11" class="py-12 text-center">
+              <p class="text-sm font-medium text-slate-600 dark:text-slate-300">No matching habits in matrix</p>
+              <p class="text-xs mt-1 text-slate-400 dark:text-slate-500">Clear your filter or click "+ Add Habit" to create a new protocol.</p>
+            </td>
+          </tr>
+        `;
+      } else {
+        tbody.innerHTML = filtered.map(habit => {
+          const completedCount = habit.logs.filter(Boolean).length;
+          const pct = Math.min(100, Math.round((completedCount / habit.targetFrequency) * 100));
+          const isGoalMet = completedCount >= habit.targetFrequency;
+          const streak = calculateStreak(habit.logs, state.selectedDayIndex);
+          const catStyle = CATEGORIES[habit.category] || CATEGORIES['Deep Work'];
+          const badgeClass = state.darkMode ? catStyle.badgeDark : catStyle.badgeLight;
+
+          return `
+            <tr class="group transition-colors hover:bg-slate-50/90 dark:hover:bg-slate-800/30">
+              <td class="py-4 pl-6 pr-4">
+                <div class="flex flex-col">
+                  <div class="flex items-center gap-2">
+                    <span class="font-semibold tracking-tight">${escapeHtml(habit.name)}</span>
+                    ${isGoalMet ? '<i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-500 shrink-0" title="Weekly target achieved!"></i>' : ''}
+                  </div>
+                  <div class="flex items-center gap-2 mt-1">
+                    <span class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md border ${badgeClass}">
+                      <span class="w-1.5 h-1.5 rounded-full ${catStyle.dot}"></span>
+                      ${escapeHtml(habit.category)}
+                    </span>
+                    ${habit.notes ? `<span class="text-xs truncate max-w-[175px] text-slate-400 dark:text-slate-500" title="${escapeHtml(habit.notes)}">${escapeHtml(habit.notes)}</span>` : ''}
+                  </div>
+                </div>
+              </td>
+              ${DAYS.map(day => {
+                const isDone = habit.logs[day.index];
+                const isFocus = day.index === state.selectedDayIndex;
+                const cellBg = isFocus ? 'bg-indigo-50/40 dark:bg-indigo-500/5' : '';
+                const btnClasses = isDone
+                  ? isGoalMet
+                    ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
+                    : 'bg-indigo-600 text-white shadow-md shadow-indigo-600/25'
+                  : 'bg-slate-100 border border-slate-200/90 text-transparent hover:border-slate-300 dark:bg-slate-950/90 dark:border-slate-800 dark:hover:border-slate-600';
+
+                return `
+                  <td class="py-3 px-2 text-center transition-colors ${cellBg}">
+                    <button
+                      type="button"
+                      data-habitid="${habit.id}"
+                      data-dayidx="${day.index}"
+                      class="toggle-day-btn w-9 h-9 rounded-xl inline-flex items-center justify-center transition-all duration-150 cursor-pointer active:scale-90 ${btnClasses}"
+                      aria-label="Toggle ${escapeHtml(habit.name)} for ${day.full}"
+                    >
+                      <i data-lucide="check" class="w-4 h-4 stroke-[2.5] ${isDone ? 'scale-100' : 'scale-0'}"></i>
+                    </button>
+                  </td>
+                `;
+              }).join('')}
+              <td class="py-4 px-4 text-center">
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold ${
+                  streak >= 3
+                    ? 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/15 dark:text-amber-400 dark:border-amber-500/30'
+                    : streak > 0
+                    ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                    : 'text-slate-400 dark:text-slate-500'
+                }">
+                  <i data-lucide="flame" class="w-3.5 h-3.5 ${streak >= 3 ? 'text-amber-500' : streak > 0 ? 'text-indigo-400' : 'opacity-40'}"></i>
+                  <span>${streak}d</span>
+                </div>
+              </td>
+              <td class="py-4 px-4">
+                <div class="flex flex-col gap-1.5">
+                  <div class="flex items-center justify-between text-xs">
+                    <span class="font-semibold">${completedCount}/${habit.targetFrequency}d</span>
+                    <span class="text-[11px] font-semibold ${isGoalMet ? 'text-emerald-500 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}">${pct}%</span>
+                  </div>
+                  <div class="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <div class="h-full rounded-full transition-all duration-300 ${isGoalMet ? 'bg-emerald-500' : 'bg-indigo-500'}" style="width: ${pct}%"></div>
+                  </div>
+                </div>
+              </td>
+              <td class="py-4 pl-2 pr-6 text-right">
+                <div class="inline-flex items-center justify-end gap-1">
+                  <button type="button" data-editid="${habit.id}" class="edit-habit-btn p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:text-slate-100 dark:hover:bg-slate-800 transition cursor-pointer" title="Edit Habit">
+                    <i data-lucide="edit-3" class="w-4 h-4"></i>
+                  </button>
+                  <button type="button" data-deleteid="${habit.id}" class="delete-habit-btn p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:text-rose-400 dark:hover:bg-rose-500/10 transition cursor-pointer" title="Delete Habit">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      // Attach listeners to matrix buttons
+      document.querySelectorAll('.toggle-day-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const habitId = btn.getAttribute('data-habitid');
+          const dayIdx = Number(btn.getAttribute('data-dayidx'));
+          const targetHabit = state.habits.find(h => h.id === habitId);
+          if (targetHabit) {
+            targetHabit.logs[dayIdx] = !targetHabit.logs[dayIdx];
+            saveHabits();
+            renderDashboard();
+          }
+        });
+      });
+
+      document.querySelectorAll('.edit-habit-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const habitId = btn.getAttribute('data-editid');
+          openHabitModal(habitId);
+        });
+      });
+
+      document.querySelectorAll('.delete-habit-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const habitId = btn.getAttribute('data-deleteid');
+          state.habits = state.habits.filter(h => h.id !== habitId);
+          saveHabits();
+          renderDashboard();
+          showToast('Habit removed from matrix', 'info');
+        });
+      });
+
+      updateCharts(stats);
+      lucide.createIcons();
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function updateCharts(precomputedStats) {
+      const stats = precomputedStats || computeAnalytics();
+      const gridColor = state.darkMode ? '#1e293b' : '#e2e8f0';
+      const tickColor = state.darkMode ? '#94a3b8' : '#64748b';
+
+      // 1. Velocity Line/Area Chart
+      const velCtx = document.getElementById('velocityChartCanvas').getContext('2d');
+      const gradient = velCtx.createLinearGradient(0, 0, 0, 240);
+      gradient.addColorStop(0, 'rgba(99, 102, 241, 0.45)');
+      gradient.addColorStop(1, 'rgba(99, 102, 241, 0.0)');
+
+      if (velocityChartInstance) {
+        velocityChartInstance.data.datasets[0].data = stats.dailyRates;
+        velocityChartInstance.options.scales.x.ticks.color = tickColor;
+        velocityChartInstance.options.scales.y.ticks.color = tickColor;
+        velocityChartInstance.options.scales.y.grid.color = gridColor;
+        velocityChartInstance.update();
+      } else {
+        velocityChartInstance = new Chart(velCtx, {
+          type: 'line',
+          data: {
+            labels: DAYS.map(d => d.short),
+            datasets: [{
+              label: 'Completion Rate (%)',
+              data: stats.dailyRates,
+              borderColor: '#6366f1',
+              borderWidth: 3,
+              backgroundColor: gradient,
+              fill: true,
+              tension: 0.35,
+              pointBackgroundColor: '#6366f1',
+              pointBorderColor: '#ffffff',
+              pointBorderWidth: 2,
+              pointRadius: 4,
+              pointHoverRadius: 6
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => ` ${ctx.parsed.y}% completed`
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { display: false },
+                ticks: { color: tickColor, font: { weight: '600', size: 11 } }
+              },
+              y: {
+                min: 0,
+                max: 100,
+                grid: { color: gridColor },
+                ticks: {
+                  color: tickColor,
+                  font: { size: 11 },
+                  callback: (val) => `${val}%`
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // 2. Category Adherence Bar Chart
+      const catCtx = document.getElementById('categoryChartCanvas').getContext('2d');
+      const catLabels = stats.categoryBreakdown.map(c => c.category);
+      const catData = stats.categoryBreakdown.map(c => c.rate);
+      const catColors = stats.categoryBreakdown.map(c => c.color);
+
+      if (categoryChartInstance) {
+        categoryChartInstance.data.labels = catLabels;
+        categoryChartInstance.data.datasets[0].data = catData;
+        categoryChartInstance.data.datasets[0].backgroundColor = catColors;
+        categoryChartInstance.options.scales.x.ticks.color = tickColor;
+        categoryChartInstance.options.scales.y.ticks.color = tickColor;
+        categoryChartInstance.options.scales.y.grid.color = gridColor;
+        categoryChartInstance.update();
+      } else {
+        categoryChartInstance = new Chart(catCtx, {
+          type: 'bar',
+          data: {
+            labels: catLabels,
+            datasets: [{
+              label: 'Target Adherence (%)',
+              data: catData,
+              backgroundColor: catColors,
+              borderRadius: 6,
+              maxBarThickness: 28
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => ` ${ctx.parsed.y}% target adherence`
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { display: false },
+                ticks: { color: tickColor, font: { size: 10, weight: '600' } }
+              },
+              y: {
+                min: 0,
+                max: 100,
+                grid: { color: gridColor },
+                ticks: {
+                  color: tickColor,
+                  font: { size: 10 },
+                  stepSize: 50,
+                  callback: (val) => `${val}%`
+                }
+              }
+            }
+          }
+        });
+      }
+    }
+
+    async function callGeminiStructured({ systemPrompt, userPrompt, responseSchema }) {
+      const savedUserKey = (localStorage.getItem(STORAGE_KEY_API) || '').trim();
+      const apiKey = savedUserKey || '';
+      const model = 'gemini-2.5-flash';
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+      const payload = {
+        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema
+        }
+      };
+
+      const delays = [1000, 2000, 4000];
+      let lastError = null;
+
+      for (let attempt = 0; attempt <= delays.length; attempt++) {
+        try {
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          const result = await response.json();
+          const rawText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (!rawText) throw new Error('Empty response from Gemini');
+          return JSON.parse(rawText);
+        } catch (err) {
+          lastError = err;
+          if (attempt < delays.length) {
+            await new Promise(r => setTimeout(r, delays[attempt]));
+          }
+        }
+      }
+      throw lastError || new Error('Gemini API request failed');
+    }
+
+    // 1. Run AI Execution & Streak Telemetry Audit
+    async function handleRunAiAudit() {
+      if (state.habits.length === 0) return;
+      const btn = document.getElementById('runAiAuditBtn');
+      const btnText = document.getElementById('runAiAuditBtnText');
+      const errorBox = document.getElementById('auditErrorBox');
+
+      btn.disabled = true;
+      btnText.textContent = 'Analyzing Telemetry...';
+      errorBox.classList.add('hidden');
+
+      try {
+        const stats = computeAnalytics();
+        const habitDetails = state.habits.map(h => ({
+          name: h.name,
+          category: h.category,
+          completedDays: h.logs.filter(Boolean).length,
+          targetFrequency: h.targetFrequency,
+          currentStreak: calculateStreak(h.logs, state.selectedDayIndex),
+          notes: h.notes || ''
+        }));
+
+        const systemPrompt =
+          'You are a high-signal quantitative performance coach. Analyze the user\'s weekly habit telemetry and return a concise, objective execution audit with zero fluff.';
+
+        const userPrompt = `Focus Day: ${DAYS[state.selectedDayIndex].full}
+Weekly Target Rate: ${stats.targetAdjustedRate}%
+Raw 7d Grid Rate: ${stats.overallRate}%
+Active Streaks (>=2d): ${stats.activeStreaks}
+Daily Completion Rates (Mon-Sun): ${JSON.stringify(stats.dailyRates)}
+Habits Telemetry: ${JSON.stringify(habitDetails)}
+
+Return JSON with:
+1. disciplineGrade (e.g., "A", "A-", "B+", "B")
+2. headline (1-sentence high-signal verdict)
+3. bottleneckAnalysis (specific diagnosis of which categories or days have execution drag)
+4. mechanicalAdjustments (array of 3 rules-based protocol adjustments with targetHabit, triggerRule, expectedImpact).`;
+
+        const schema = {
+          type: 'OBJECT',
+          properties: {
+            disciplineGrade: { type: 'STRING' },
+            headline: { type: 'STRING' },
+            bottleneckAnalysis: { type: 'STRING' },
+            mechanicalAdjustments: {
+              type: 'ARRAY',
+              items: {
+                type: 'OBJECT',
+                properties: {
+                  targetHabit: { type: 'STRING' },
+                  triggerRule: { type: 'STRING' },
+                  expectedImpact: { type: 'STRING' }
+                },
+                required: ['targetHabit', 'triggerRule', 'expectedImpact']
+              }
+            }
+          },
+          required: ['disciplineGrade', 'headline', 'bottleneckAnalysis', 'mechanicalAdjustments']
+        };
+
+        const report = await callGeminiStructured({ systemPrompt, userPrompt, responseSchema: schema });
+
+        document.getElementById('auditGradeBadge').textContent = `Grade: ${report.disciplineGrade}`;
+        document.getElementById('auditHeadline').textContent = report.headline;
+        document.getElementById('auditBottleneck').textContent = report.bottleneckAnalysis;
+
+        const adjList = document.getElementById('auditAdjustmentsList');
+        adjList.innerHTML = (report.mechanicalAdjustments || []).map((adj, idx) => `
+          <div class="p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border-slate-200 dark:bg-slate-950/70 dark:border-slate-800/90">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span class="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-[11px] font-bold inline-flex items-center justify-center">${idx + 1}</span>
+                <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400">${escapeHtml(adj.targetHabit)}</span>
+              </div>
+              <p class="text-xs font-medium pl-7">${escapeHtml(adj.triggerRule)}</p>
+            </div>
+            <div class="sm:text-right pl-7 sm:pl-0 shrink-0 text-[11px] font-semibold px-2.5 py-1 rounded-lg self-start sm:self-center bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20">
+              ${escapeHtml(adj.expectedImpact)}
+            </div>
+          </div>
+        `).join('');
+
+        document.getElementById('auditResultContainer').classList.remove('hidden');
+        document.getElementById('dismissAuditBtn').classList.remove('hidden');
+        btnText.textContent = 'Re-Run AI Audit';
+      } catch (err) {
+        document.getElementById('auditErrorText').textContent =
+          'Could not reach Gemini API. Click "API Key" in the header to save your free Google AI Studio key for local use.';
+        errorBox.classList.remove('hidden');
+        btnText.textContent = 'Generate AI Audit';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // 2. AI Protocol Architect (Goal -> 4 Habits)
+    async function handleGenerateArchitectProtocol(e) {
+      e.preventDefault();
+      const goalInput = document.getElementById('architectGoalInput');
+      const goal = goalInput.value.trim();
+      const errorBox = document.getElementById('architectErrorBox');
+      if (!goal) {
+        errorBox.textContent = 'Please enter a target objective or click one of the quick presets.';
+        errorBox.classList.remove('hidden');
+        return;
+      }
+
+      const btn = document.getElementById('generateProtocolBtn');
+      const btnText = document.getElementById('generateProtocolBtnText');
+      btn.disabled = true;
+      btnText.textContent = 'Synthesizing...';
+      errorBox.classList.add('hidden');
+
+      try {
+        const allowedCats = Object.keys(CATEGORIES);
+        const systemPrompt = `You are an elite systems architect. Convert the user's goal into 4 measurable, mechanical weekly habits. Categories must be chosen strictly from: ${allowedCats.join(', ')}.`;
+        const userPrompt = `Objective: "${goal}"
+Existing Habits: ${state.habits.map(h => h.name).join(', ')}
+
+Return 4 high-impact habits with name, category (one of ${allowedCats.join(', ')}), targetFrequency (integer 3 to 7), and notes (concrete execution trigger cue).`;
+
+        const schema = {
+          type: 'OBJECT',
+          properties: {
+            habits: {
+              type: 'ARRAY',
+              items: {
+                type: 'OBJECT',
+                properties: {
+                  name: { type: 'STRING' },
+                  category: { type: 'STRING' },
+                  targetFrequency: { type: 'INTEGER' },
+                  notes: { type: 'STRING' }
+                },
+                required: ['name', 'category', 'targetFrequency', 'notes']
+              }
+            }
+          },
+          required: ['habits']
+        };
+
+        const data = await callGeminiStructured({ systemPrompt, userPrompt, responseSchema: schema });
+        state.architectSuggestions = (data.habits || []).slice(0, 4).map(h => ({
+          name: h.name,
+          category: CATEGORIES[h.category] ? h.category : 'Deep Work',
+          targetFrequency: Math.min(7, Math.max(3, Number(h.targetFrequency) || 5)),
+          notes: h.notes
+        }));
+        state.addedSuggestionIndexes = [];
+        renderArchitectSuggestions();
+      } catch (err) {
+        errorBox.textContent = 'Failed to reach Gemini API. Please ensure your Google AI Studio API Key is configured in the header.';
+        errorBox.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btnText.textContent = 'Design 4-Habit Stack';
+      }
+    }
+
+    function renderArchitectSuggestions() {
+      const container = document.getElementById('architectResultsContainer');
+      const listEl = document.getElementById('architectSuggestionsList');
+      if (state.architectSuggestions.length === 0) {
+        container.classList.add('hidden');
+        return;
+      }
+      container.classList.remove('hidden');
+
+      listEl.innerHTML = state.architectSuggestions.map((item, idx) => {
+        const isAdded = state.addedSuggestionIndexes.includes(idx);
+        return `
+          <div class="p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 border-slate-200 dark:bg-slate-950/80 dark:border-slate-800">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-bold text-sm">${escapeHtml(item.name)}</span>
+                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md border bg-indigo-500/10 text-indigo-500 border-indigo-500/20">${escapeHtml(item.category)}</span>
+                <span class="text-[11px] font-semibold text-indigo-500">Target: ${item.targetFrequency}d/wk</span>
+              </div>
+              <p class="text-xs text-slate-500 dark:text-slate-400">${escapeHtml(item.notes)}</p>
+            </div>
+            <button type="button" data-archidx="${idx}" class="add-arch-habit-btn px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition cursor-pointer ${
+              isAdded ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 cursor-default' : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+            }" ${isAdded ? 'disabled' : ''}>
+              ${isAdded ? 'Added ✓' : '+ Add Habit'}
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      document.querySelectorAll('.add-arch-habit-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = Number(btn.getAttribute('data-archidx'));
+          if (state.addedSuggestionIndexes.includes(idx)) return;
+          const s = state.architectSuggestions[idx];
+          state.habits.push({
+            id: `h-${Date.now()}-${idx}`,
+            name: s.name,
+            category: s.category,
+            targetFrequency: s.targetFrequency,
+            logs: [false, false, false, false, false, false, false],
+            notes: s.notes
+          });
+          state.addedSuggestionIndexes.push(idx);
+          saveHabits();
+          renderDashboard();
+          renderArchitectSuggestions();
+          showToast(`Added "${s.name}"`, 'success');
+        });
+      });
+    }
+
+    // 3. Smart Habit Optimizer inside Add/Edit Modal
+    async function handleOptimizeHabitWithAi() {
+      const nameInput = document.getElementById('habitFormName');
+      const catSelect = document.getElementById('habitFormCategory');
+      const notesInput = document.getElementById('habitFormNotes');
+      const errorBox = document.getElementById('habitFormError');
+      const btnText = document.getElementById('optimizeHabitAiBtnText');
+
+      const draft = nameInput.value.trim();
+      if (!draft) {
+        errorBox.textContent = 'Enter a rough habit idea first (e.g., "review gold chart" or "morning run") to optimize with AI.';
+        errorBox.classList.remove('hidden');
+        return;
+      }
+
+      errorBox.classList.add('hidden');
+      btnText.textContent = 'Optimizing...';
+
+      try {
+        const allowedCats = Object.keys(CATEGORIES);
+        const systemPrompt = 'You refine rough habit ideas into specific, measurable habits with a clear mechanical trigger cue.';
+        const userPrompt = `Draft Habit: "${draft}"
+Category: "${catSelect.value}"
+Notes: "${notesInput.value}"
+
+Refine into:
+1. refinedName (measurable habit title, max 40 chars)
+2. bestCategory (one of: ${allowedCats.join(', ')})
+3. recommendedTarget (integer 3 to 7)
+4. mechanicalCue (specific trigger rule for notes field, max 95 chars).`;
+
+        const schema = {
+          type: 'OBJECT',
+          properties: {
+            refinedName: { type: 'STRING' },
+            bestCategory: { type: 'STRING' },
+            recommendedTarget: { type: 'INTEGER' },
+            mechanicalCue: { type: 'STRING' }
+          },
+          required: ['refinedName', 'bestCategory', 'recommendedTarget', 'mechanicalCue']
+        };
+
+        const res = await callGeminiStructured({ systemPrompt, userPrompt, responseSchema: schema });
+        if (res.refinedName) nameInput.value = res.refinedName;
+        if (res.bestCategory && CATEGORIES[res.bestCategory]) catSelect.value = res.bestCategory;
+        if (res.recommendedTarget) setHabitModalTargetFreq(Math.min(7, Math.max(3, Number(res.recommendedTarget))));
+        if (res.mechanicalCue) notesInput.value = res.mechanicalCue;
+        showToast('Habit refined with Gemini AI!', 'success');
+      } catch (err) {
+        errorBox.textContent = 'AI optimization failed. Check your API Key in header settings or save manually.';
+        errorBox.classList.remove('hidden');
+      } finally {
+        btnText.textContent = '✨ Optimize with AI';
+      }
+    }
+
+    function setHabitModalTargetFreq(freq) {
+      document.getElementById('habitFormTarget').value = String(freq);
+      document.getElementById('habitFormTargetLabel').textContent = String(freq);
+      document.querySelectorAll('.freq-btn').forEach(btn => {
+        const val = Number(btn.getAttribute('data-freq'));
+        if (val === Number(freq)) {
+          btn.className = 'freq-btn flex-1 py-2 rounded-xl text-xs font-bold border transition cursor-pointer bg-indigo-600 border-indigo-500 text-white shadow';
+        } else {
+          btn.className = 'freq-btn flex-1 py-2 rounded-xl text-xs font-bold border transition cursor-pointer bg-slate-50 border-slate-200 text-slate-600 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-400';
+        }
+      });
+    }
+
+    function openHabitModal(editHabitId = null) {
+      const modal = document.getElementById('habitModal');
+      const titleEl = document.getElementById('habitModalTitle');
+      const idInput = document.getElementById('habitFormId');
+      const nameInput = document.getElementById('habitFormName');
+      const catSelect = document.getElementById('habitFormCategory');
+      const notesInput = document.getElementById('habitFormNotes');
+      const errorBox = document.getElementById('habitFormError');
+
+      errorBox.classList.add('hidden');
+
+      if (editHabitId) {
+        const habit = state.habits.find(h => h.id === editHabitId);
+        if (!habit) return;
+        titleEl.textContent = 'Edit Habit Protocol';
+        idInput.value = habit.id;
+        nameInput.value = habit.name;
+        catSelect.value = habit.category;
+        notesInput.value = habit.notes || '';
+        setHabitModalTargetFreq(habit.targetFrequency);
+      } else {
+        titleEl.textContent = 'Create New Habit';
+        idInput.value = '';
+        nameInput.value = '';
+        catSelect.value = 'Trading/Finance';
+        notesInput.value = '';
+        setHabitModalTargetFreq(5);
+      }
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      nameInput.focus();
+    }
+
+    function closeHabitModal() {
+      const modal = document.getElementById('habitModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    window.onload = function () {
+      loadState();
+      applyTheme();
+      updateApiKeyIndicator();
+      renderDashboard();
+
+      // Theme Toggle
+      document.getElementById('themeToggleBtn').addEventListener('click', () => {
+        state.darkMode = !state.darkMode;
+        applyTheme();
+        renderDashboard();
+      });
+
+      // Focus Day Dropdown
+      document.getElementById('focusDaySelect').addEventListener('change', (e) => {
+        state.selectedDayIndex = Number(e.target.value);
+        renderDashboard();
+      });
+
+      // Complete All Today Quick Action
+      document.getElementById('completeAllTodayBtn').addEventListener('click', () => {
+        state.habits.forEach(h => {
+          h.logs[state.selectedDayIndex] = true;
+        });
+        saveHabits();
+        renderDashboard();
+        showToast(`All habits marked complete for ${DAYS[state.selectedDayIndex].full}!`, 'success');
+      });
+
+      // Search Input
+      document.getElementById('habitSearchInput').addEventListener('input', (e) => {
+        state.searchQuery = e.target.value;
+        renderDashboard();
+      });
+
+      // Add/Edit Habit Modal Listeners
+      document.getElementById('openAddHabitModalBtn').addEventListener('click', () => openHabitModal(null));
+      document.getElementById('closeHabitModalBtn').addEventListener('click', closeHabitModal);
+      document.getElementById('cancelHabitModalBtn').addEventListener('click', closeHabitModal);
+
+      document.querySelectorAll('.freq-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          setHabitModalTargetFreq(Number(btn.getAttribute('data-freq')));
+        });
+      });
+
+      document.getElementById('optimizeHabitAiBtn').addEventListener('click', handleOptimizeHabitWithAi);
+
+      document.getElementById('habitForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const idVal = document.getElementById('habitFormId').value;
+        const nameVal = document.getElementById('habitFormName').value.trim();
+        const catVal = document.getElementById('habitFormCategory').value;
+        const targetVal = Number(document.getElementById('habitFormTarget').value) || 5;
+        const notesVal = document.getElementById('habitFormNotes').value.trim();
+        const errorBox = document.getElementById('habitFormError');
+
+        if (!nameVal) {
+          errorBox.textContent = 'Please enter a habit name.';
+          errorBox.classList.remove('hidden');
+          return;
+        }
+
+        if (idVal) {
+          const existing = state.habits.find(h => h.id === idVal);
+          if (existing) {
+            existing.name = nameVal;
+            existing.category = catVal;
+            existing.targetFrequency = targetVal;
+            existing.notes = notesVal;
+          }
+          showToast('Habit updated', 'success');
+        } else {
+          state.habits.push({
+            id: `h-${Date.now()}`,
+            name: nameVal,
+            category: catVal,
+            targetFrequency: targetVal,
+            logs: [false, false, false, false, false, false, false],
+            notes: notesVal
+          });
+          showToast('New habit added to matrix', 'success');
+        }
+
+        saveHabits();
+        closeHabitModal();
+        renderDashboard();
+      });
+
+      // AI Audit Listeners
+      document.getElementById('runAiAuditBtn').addEventListener('click', handleRunAiAudit);
+      document.getElementById('dismissAuditBtn').addEventListener('click', () => {
+        document.getElementById('auditResultContainer').classList.add('hidden');
+        document.getElementById('dismissAuditBtn').classList.add('hidden');
+      });
+      document.getElementById('auditErrorKeyBtn').addEventListener('click', () => {
+        document.getElementById('openApiKeyModalBtn').click();
+      });
+
+      // AI Architect Modal Listeners
+      const archModal = document.getElementById('architectModal');
+      document.getElementById('openArchitectModalBtn').addEventListener('click', () => {
+        archModal.classList.remove('hidden');
+        archModal.classList.add('flex');
+      });
+      document.getElementById('closeArchitectModalBtn').addEventListener('click', () => {
+        archModal.classList.add('hidden');
+        archModal.classList.remove('flex');
+      });
+      document.querySelectorAll('.architect-preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.getElementById('architectGoalInput').value = btn.getAttribute('data-preset');
+        });
+      });
+      document.getElementById('architectForm').addEventListener('submit', handleGenerateArchitectProtocol);
+      document.getElementById('importAllArchitectBtn').addEventListener('click', () => {
+        let addedCount = 0;
+        state.architectSuggestions.forEach((s, idx) => {
+          if (!state.addedSuggestionIndexes.includes(idx)) {
+            state.habits.push({
+              id: `h-${Date.now()}-bulk-${idx}`,
+              name: s.name,
+              category: s.category,
+              targetFrequency: s.targetFrequency,
+              logs: [false, false, false, false, false, false, false],
+              notes: s.notes
+            });
+            state.addedSuggestionIndexes.push(idx);
+            addedCount++;
+          }
+        });
+        if (addedCount > 0) {
+          saveHabits();
+          renderDashboard();
+          renderArchitectSuggestions();
+          showToast(`Imported ${addedCount} habits into matrix!`, 'success');
+        }
+      });
+
+      // API Key Modal Listeners
+      const apiModal = document.getElementById('apiKeyModal');
+      document.getElementById('openApiKeyModalBtn').addEventListener('click', () => {
+        document.getElementById('apiKeyInput').value = localStorage.getItem(STORAGE_KEY_API) || '';
+        apiModal.classList.remove('hidden');
+        apiModal.classList.add('flex');
+      });
+      const closeApiModal = () => {
+        apiModal.classList.add('hidden');
+        apiModal.classList.remove('flex');
+      };
+      document.getElementById('closeApiKeyModalBtn').addEventListener('click', closeApiModal);
+      document.getElementById('cancelApiKeyBtn').addEventListener('click', closeApiModal);
+      document.getElementById('saveApiKeyBtn').addEventListener('click', () => {
+        const val = document.getElementById('apiKeyInput').value.trim();
+        localStorage.setItem(STORAGE_KEY_API, val);
+        updateApiKeyIndicator();
+        closeApiModal();
+        showToast(val ? 'Gemini API key saved to localStorage' : 'API key cleared', 'success');
+      });
+      document.getElementById('clearApiKeyBtn').addEventListener('click', () => {
+        localStorage.removeItem(STORAGE_KEY_API);
+        document.getElementById('apiKeyInput').value = '';
+        updateApiKeyIndicator();
+        showToast('Saved API key removed', 'info');
+      });
+
+      // Reset Modal Listeners
+      const resetModal = document.getElementById('resetModal');
+      document.getElementById('openResetModalBtn').addEventListener('click', () => {
+        resetModal.classList.remove('hidden');
+        resetModal.classList.add('flex');
+      });
+      document.getElementById('closeResetModalBtn').addEventListener('click', () => {
+        resetModal.classList.add('hidden');
+        resetModal.classList.remove('flex');
+      });
+      document.getElementById('confirmClearWeekBtn').addEventListener('click', () => {
+        state.habits.forEach(h => {
+          h.logs = [false, false, false, false, false, false, false];
+        });
+        saveHabits();
+        resetModal.classList.add('hidden');
+        resetModal.classList.remove('flex');
+        renderDashboard();
+        showToast('Weekly checkmarks cleared for new sprint!', 'success');
+      });
+      document.getElementById('confirmRestoreDefaultsBtn').addEventListener('click', () => {
+        state.habits = JSON.parse(JSON.stringify(DEFAULT_HABITS));
+        saveHabits();
+        resetModal.classList.add('hidden');
+        resetModal.classList.remove('flex');
+        renderDashboard();
+        showToast('Default sample habits restored!', 'success');
+      });
+
+      // JSON Export & Import Listeners
+      document.getElementById('exportJsonBtn').addEventListener('click', () => {
+        const dataStr = JSON.stringify(state.habits, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `habit-telemetry-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('Exported habits backup JSON!', 'success');
+      });
+
+      document.getElementById('importJsonInput').addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const parsed = JSON.parse(event.target.result);
+            if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].name && Array.isArray(parsed[0].logs)) {
+              state.habits = parsed;
+              saveHabits();
+              renderDashboard();
+              showToast(`Imported ${parsed.length} habits successfully!`, 'success');
+            } else {
+              showToast('Invalid habit JSON file format', 'error');
+            }
+          } catch (err) {
+            showToast('Failed to parse JSON file', 'error');
+          }
+          e.target.value = '';
+        };
+        reader.readAsText(file);
+      });
+    };
+  </script>
+</body>
+</html>
